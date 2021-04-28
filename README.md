@@ -7,6 +7,7 @@ Creates RRD graphs for Fortinet Integrated Wi-Fi channel utilization over time.
 	cd fortigate_rrd/
 	python3 -m venv venv
 	source venv/bin/activate
+	pip install --upgrade pip
 	pip install -r pip-requirements.txt
 
 # Running script to gather RRD data
