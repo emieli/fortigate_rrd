@@ -2,7 +2,7 @@
 Creates RRD graphs for Fortinet Integrated Wi-Fi channel utilization over time.
 
 # Install (Debian)
-	sudo apt install python3-venv librrd-dev
+	sudo apt install python3-venv librrd-dev libpython-dev
 	python3 -m venv venv
 	source venv/bin/activate
 	pip install -r pip-requirements.txt
