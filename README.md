@@ -1,7 +1,8 @@
 # fortigate__rrdtool
 Creates RRD graphs for Fortinet Integrated Wi-Fi channel utilization over time.
 
-# Install
+# Install (Debian)
+	sudo apt install python3-venv librrd-dev
 	python3 -m venv venv
 	source venv/bin/activate
 	pip install -r pip-requirements.txt
