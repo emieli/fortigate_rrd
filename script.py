@@ -3,6 +3,8 @@ import time
 import rrdtool
 import os
 import json
+from subprocess import Popen, PIPE
+from sys import platform
 
 import argparse
 argparser = argparse.ArgumentParser()
@@ -15,11 +17,20 @@ argparser.add_argument(
 )
 options = argparser.parse_args()
 
+''' Abort script if it is already running '''
+if platform == "linux":
+    this_process = os.getpid()
+    sp = Popen(f"ps a | grep -v {this_process}", shell=True, stdout=PIPE, universal_newlines=True)
+    output, error = sp.communicate()
+    if options.ip in output:
+        exit(f"Another script is already polling {options.ip}, aborting.")
+
 ''' Get user credentials '''
 import getpass
 username = getpass.getuser()
 password = getpass.getpass(f"Enter Fortigate password ({username}): ")
 
+''' Create folders if missing '''
 data_folder = f"{os.path.dirname(os.path.realpath(__file__))}/rrd"
 if not os.path.exists(data_folder):
     os.makedirs(data_folder)

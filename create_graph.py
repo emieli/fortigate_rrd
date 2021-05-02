@@ -12,7 +12,7 @@ if not os.path.exists(graphs_folder):
 ''' Set graph history, change "minutes = 20" to however long history the graph should display '''
 end_time = datetime.datetime.now() - datetime.timedelta()
 end_time = int(time.mktime(end_time.timetuple()))
-start_time = datetime.datetime.now() - datetime.timedelta(minutes = 20)
+start_time = datetime.datetime.now() - datetime.timedelta(hours = 1)
 start_time = int(time.mktime(start_time.timetuple()))
 
 ''' Each step in the graph should be atleast 5 pixels or the graph becomes hard to interpret.
