@@ -20,15 +20,17 @@ options = argparser.parse_args()
 ''' Abort script if it is already running '''
 if platform == "linux":
     this_process = os.getpid()
-    sp = Popen(f"ps a | grep -v {this_process}", shell=True, stdout=PIPE, universal_newlines=True)
+    sp = Popen(f"ps x | grep -v {this_process}", shell=True, stdout=PIPE, universal_newlines=True)
     output, error = sp.communicate()
     if options.ip in output:
         exit(f"Another script is already polling {options.ip}, aborting.")
 
 ''' Get user credentials '''
-import getpass
-username = getpass.getuser()
-password = getpass.getpass(f"Enter Fortigate password ({username}): ")
+# import getpass
+# username = getpass.getuser()
+# password = getpass.getpass(f"Enter Fortigate password ({username}): ")
+from credentials import username
+from credentials import password
 
 ''' Create folders if missing '''
 data_folder = f"{os.path.dirname(os.path.realpath(__file__))}/rrd"
@@ -42,6 +44,8 @@ try:
     ssh.connect(options.ip, username=username, password=password)
 except Exception as e:
     exit(f"SSH connection failed: {e}")
+else:
+    print("SSH session connected")
 
 ''' The loop that does all the work. Every 15 seconds it scrapes Wi-Fi data from Fortigate CLI and saves it to RRD files '''
 while True:
@@ -70,59 +74,52 @@ while True:
     stdin, stdout, stderr = ssh.exec_command("diagnose wireless-controller wlac -c wtp")
     stdin.close()
 
-    ''' Sort output per AP '''
-    output_per_ap = []
-    for line in stdout.readlines():
-        line = line.strip()
-        if "-------------------------------WTP" in line:
-            output_per_ap.append([])
-        else:
-            output_per_ap[-1].append(line)
-
     ''' Go through output for each AP, save relevant info to 'access_points' '''
     access_points = []
-    for ap_output in output_per_ap:
+    for line in stdout.readlines():
+        line = line.strip()
 
-        access_points.append({})
-        for line in ap_output:
-            if "name             : " in line:
-                ''' Get AP hostname '''
-                ap_name = line.split(": ")[1]
-                access_points[-1]['name'] = ap_name
+        if "-------------------------------WTP" in line:
+            access_points.append({})
 
-            elif "local IPv4 addr" in line:
-                ''' Get AP mgmt IP '''
-                access_points[-1]['ip'] = line.split(": ")[1]
+        elif "name             : " in line:
+            ''' Get AP hostname '''
+            ap_name = line.split(": ")[1]
+            access_points[-1]['name'] = ap_name
 
-            elif "connection state" in line:
-                ''' Ignore AP if not online '''
-                state = line.split(": ")[1]
-                if state != "Connected":
-                    del access_points[-1]
-                    break
-            
-            elif line == "Radio 1            : AP":
-                ''' Get current radio '''
-                ap_radio = "2ghz"
-                access_points[-1][ap_radio] = {
-                    'clients': 0,
-                    'ch_util': -1,
-                }
+        elif "local IPv4 addr" in line:
+            ''' Get AP mgmt IP '''
+            access_points[-1]['ip'] = line.split(": ")[1]
 
-            elif line == "Radio 2            : AP":
-                ''' Get current radio '''
-                ap_radio = "5ghz"
-                access_points[-1][ap_radio] = {
-                    'clients': 0,
-                    'ch_util': -1,
-                }
+        elif "connection state" in line:
+            ''' Ignore AP if not online '''
+            state = line.split(": ")[1]
+            if state != "Connected":
+                del access_points[-1]
+                break
+        
+        elif line == "Radio 1            : AP":
+            ''' Get current radio '''
+            ap_radio = "2ghz"
+            access_points[-1][ap_radio] = {
+                'clients': 0,
+                'ch_util': -1,
+            }
 
-            elif "oper chutil data : " in line:
-                ''' Get channel utilization data '''
-                try:
-                    access_points[-1][ap_radio]['ch_util'] = int(line.split(": ")[1].split(",")[0])
-                except:
-                    print(f"Unknown channel utilization value: {line}")
+        elif line == "Radio 2            : AP":
+            ''' Get current radio '''
+            ap_radio = "5ghz"
+            access_points[-1][ap_radio] = {
+                'clients': 0,
+                'ch_util': -1,
+            }
+
+        elif "oper chutil data : " in line:
+            ''' Get channel utilization data '''
+            try:
+                access_points[-1][ap_radio]['ch_util'] = int(line.split(": ")[1].split(",")[0])
+            except:
+                print(f"Unknown channel utilization value: {line}")
 
     # print(json.dumps(access_points, indent=4))
 
@@ -155,7 +152,7 @@ while True:
         print(update)
 
     end = time.time()
-    # print(f"Time taken: {end - start}")
+    print(f"Time taken: {end - start}")
 
-    print("")
+    # print("")
     time.sleep(15 - end + start)

@@ -1,3 +1,5 @@
 venv
 rrd*
 graphs
+credentials.py
+__pycache__
