@@ -12,7 +12,7 @@ if not os.path.exists(graphs_folder):
 ''' Set graph history, change "minutes = 20" to however long history the graph should display '''
 end_time = datetime.datetime.now() - datetime.timedelta()
 end_time = int(time.mktime(end_time.timetuple()))
-start_time = datetime.datetime.now() - datetime.timedelta(hours = 12)
+start_time = datetime.datetime.now() - datetime.timedelta(hours = 4)
 start_time = int(time.mktime(start_time.timetuple()))
 
 ''' Each step in the graph should be atleast 5 pixels or the graph becomes hard to interpret.
@@ -31,26 +31,19 @@ data_files = os.listdir(data_folder)
 for data_file in data_files:
 
     input_file = f"{data_folder}/{data_file}"
-    image_file = data_file.replace(".rrd", ".png")
+    image_file = data_file.replace(".rrd", "")
 
-    rrdtool.graph(f"{graphs_folder}/{image_file}", 
-        "--start", f"{start_time}",
-        "--end", f"{end_time}",
-        f"--title={data_file.replace('.rrd', '')} Channel Utilization",
-        "--height=450",
-        f"--width={graph_width}",
-        "--upper-limit=100",
-        "--lower-limit=0",
-        "--vertical-label", "Percent",
-        f"DEF:ch-util-2ghz-max={input_file}:ch-util-2ghz:MAX:step={step_size}",
-        "LINE:ch-util-2ghz-max#A22615:2 ghz peak\l:dashes=4",
-        f"DEF:ch-util-2ghz-avg={input_file}:ch-util-2ghz:AVERAGE:step={step_size}",
-        "LINE2:ch-util-2ghz-avg#F26C52:2 ghz average\l",
-        f"DEF:ch-util-5ghz-max={input_file}:ch-util-5ghz:MAX:step={step_size}",
-        "LINE:ch-util-5ghz-max#003046:5 ghz peak\l:dashes=4",
-        f"DEF:ch-util-5ghz-avg={input_file}:ch-util-5ghz:AVERAGE:step={step_size}",
-        "LINE2:ch-util-5ghz-avg#006EB9:5 ghz average\l",
-        f"DEF:clients-2ghz={input_file}:clients-2ghz:AVERAGE:step={step_size}",
-        "LINE2:clients-2ghz#FFCD34:2 ghz clients\l",
-        f"DEF:clients-5ghz={input_file}:clients-5ghz:AVERAGE:step={step_size}",
-        "LINE2:clients-5ghz#73B865:5 ghz clients\l",)
+    ''' https://htmlcolors.com/color-chart '''
+    for radio in ["2ghz", "5ghz"]:
+        rrdtool.graph(f"{graphs_folder}/{image_file}-{radio}.png", 
+            "--start", f"{start_time}",
+            "--end", f"{end_time}",
+            f"--title={image_file} statistics",
+            "--height=450",
+            f"--width={graph_width}",
+            "--upper-limit=100",
+            "--lower-limit=0",
+            f"DEF:clients-{radio}={input_file}:clients-{radio}:AVERAGE:step={step_size}",               f"AREA:clients-{radio}#81c784:{radio} Clients #\l",
+            f"DEF:ch-util-{radio}={input_file}:ch-util-{radio}:AVERAGE:step={step_size}",               f"LINE2:ch-util-{radio}#d32f2f:{radio} Channel Utilization %\l",
+            f"DEF:interfering-ap-{radio}={input_file}:interfering-ap-{radio}:AVERAGE:step={step_size}", f"LINE2:interfering-ap-{radio}#5d4037:{radio} Interfering APs #\l",
+            f"DEF:tx-retries-{radio}={input_file}:tx-retries-{radio}:AVERAGE:step={step_size}",         f"LINE2:tx-retries-{radio}#fbc02d:{radio} TX retries %\l")

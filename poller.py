@@ -26,11 +26,13 @@ if platform == "linux":
         exit(f"Another script is already polling {options.ip}, aborting.")
 
 ''' Get user credentials '''
-# import getpass
-# username = getpass.getuser()
-# password = getpass.getpass(f"Enter Fortigate password ({username}): ")
-from credentials import username
-from credentials import password
+try:
+    from credentials import username
+    from credentials import password
+except:
+    import getpass
+    username = getpass.getuser()
+    password = getpass.getpass(f"Enter Fortigate password ({username}): ")
 
 ''' Create folders if missing '''
 data_folder = f"{os.path.dirname(os.path.realpath(__file__))}/rrd"
@@ -51,103 +53,75 @@ else:
 while True:
 
     start = time.time()
-    ''' Get client data '''
-    stdin, stdout, stderr = ssh.exec_command("diagnose wireless-controller wlac -c sta")
-    stdin.close()
-
-    ''' Go through each connected client device, save relevant info to 'clients' '''
-    clients = []
-    for line in stdout.readlines():
-        line = line.strip()
-        if "-------------------------------STA" in line:
-            clients.append({})
-        elif "wtp" in line:
-            clients[-1]['ap_ip'] = line.split("0-")[1].split(":")[0] # output is "0-10.70.8.2:5246", we only want "10.70.8.2"
-        elif line ==  "rId              : 0":
-            clients[-1]['radio'] = "2ghz"
-        elif line == "rId              : 1":
-            clients[-1]['radio'] = "5ghz"
-    
-    # print(json.dumps(clients, indent=4))
 
     ''' Get AP data '''
-    stdin, stdout, stderr = ssh.exec_command("diagnose wireless-controller wlac -c wtp")
+    stdin, stdout, stderr = ssh.exec_command("get wireless-controller wtp-status")
     stdin.close()
 
-    ''' Go through output for each AP, save relevant info to 'access_points' '''
     access_points = []
     for line in stdout.readlines():
         line = line.strip()
 
-        if "-------------------------------WTP" in line:
-            access_points.append({})
+        if "WTP: " in line:
+            access_points.append({
+                "2ghz": {
+                    'tx-retries': -1
+                },
+                "5ghz": {
+                    'tx-retries': -1
+                }
+            })
+        
+        elif "name             :" in line:
+            access_points[-1]['name'] = line.split(": ")[1]
 
-        elif "name             : " in line:
-            ''' Get AP hostname '''
-            ap_name = line.split(": ")[1]
-            access_points[-1]['name'] = ap_name
-
-        elif "local IPv4 addr" in line:
-            ''' Get AP mgmt IP '''
+        elif "local-ipv4-addr" in line:
             access_points[-1]['ip'] = line.split(": ")[1]
 
-        elif "connection state" in line:
-            ''' Ignore AP if not online '''
-            state = line.split(": ")[1]
-            if state != "Connected":
-                del access_points[-1]
-                break
-        
+        elif "connection-state" in line:
+            access_points[-1]['state'] = line.split(": ")[1]
+
         elif line == "Radio 1            : AP":
-            ''' Get current radio '''
-            ap_radio = "2ghz"
-            access_points[-1][ap_radio] = {
-                'clients': 0,
-                'ch_util': -1,
-            }
+            radio = "2ghz"
 
         elif line == "Radio 2            : AP":
-            ''' Get current radio '''
-            ap_radio = "5ghz"
-            access_points[-1][ap_radio] = {
-                'clients': 0,
-                'ch_util': -1,
-            }
+            radio = "5ghz"
 
-        elif "oper chutil data : " in line:
-            ''' Get channel utilization data '''
+        elif "client-count" in line:
+            access_points[-1][radio]['clients'] = line.split(": ")[1]
+
+        elif "oper-chutil-val" in line:
             try:
-                access_points[-1][ap_radio]['ch_util'] = int(line.split(": ")[1].split(",")[0])
+                access_points[-1][radio]['ch-util'] = int(line.split(": ")[1].split(" (")[0])
             except:
-                print(f"Unknown channel utilization value: {line}")
+                access_points[-1][radio]['ch-util'] = -1
 
-    # print(json.dumps(access_points, indent=4))
+        elif "tx-retries" in line:
+            access_points[-1][radio]['tx-retries'] = line.split(": ")[1].replace("%", "")
 
-    ''' Count how many clients are connected to each AP radio '''
-    for client in clients:
-        for ap in access_points:
-            if client['ap_ip'] == ap['ip']:
-                radio = client['radio']
-                ap[radio]['clients'] += 1
-    
-    # print(json.dumps(access_points, indent=4))
+        elif "interfering-ap" in line:
+            access_points[-1][radio]['interfering-ap'] = line.split(": ")[1]
+
+    # exit(json.dumps(access_points, indent=4))
 
     ''' Write gathered data to RRD file '''
     for ap in access_points:
+
+        if ap['state'] != "Connected":
+            continue
+
         filename = f"{data_folder}/{ap['name']}.rrd"
         if not os.path.isfile(filename):
             rrdtool.create(filename, 
                 "--start", "now",
                 "--step", "15",
-                "DS:ch-util-2ghz:GAUGE:60:0:100",
-                "DS:ch-util-5ghz:GAUGE:60:0:100",
-                "DS:clients-2ghz:GAUGE:60:0:200",
-                "DS:clients-5ghz:GAUGE:60:0:200",
-                "RRA:MAX:0.25:1m:1M",
+                "DS:ch-util-2ghz:GAUGE:60:0:100", "DS:clients-2ghz:GAUGE:60:0:200", "DS:tx-retries-2ghz:GAUGE:60:0:100", "DS:interfering-ap-2ghz:GAUGE:60:0:100",
+                "DS:ch-util-5ghz:GAUGE:60:0:100", "DS:clients-5ghz:GAUGE:60:0:200", "DS:tx-retries-5ghz:GAUGE:60:0:100", "DS:interfering-ap-5ghz:GAUGE:60:0:100",
                 "RRA:AVERAGE:0.25:1m:1M",
                 "RRA:AVERAGE:0.25:5m:1y")
         
-        update = f"N:{ap['2ghz']['ch_util']}:{ap['5ghz']['ch_util']}:{ap['2ghz']['clients']}:{ap['5ghz']['clients']}"
+        update = f"N:{ap['2ghz']['ch-util']}:{ap['2ghz']['clients']}:{ap['2ghz']['tx-retries']}:{ap['2ghz']['interfering-ap']}"
+        update += f":{ap['5ghz']['ch-util']}:{ap['5ghz']['clients']}:{ap['5ghz']['tx-retries']}:{ap['5ghz']['interfering-ap']}"
         rrdtool.update(filename, update)
         print(update)
 

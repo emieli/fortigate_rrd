@@ -1,5 +1,5 @@
-# fortigate__rrdtool
-Creates RRD graphs for Fortinet Integrated Wi-Fi channel utilization over time.
+# fortigate_rrd
+Creates RRD graphs for Fortinet Integrated Wi-Fi
 
 # Install (Debian)
 	sudo apt install git gcc python3-venv librrd-dev libpython3-dev
@@ -8,10 +8,10 @@ Creates RRD graphs for Fortinet Integrated Wi-Fi channel utilization over time.
 	python3 -m venv venv
 	source venv/bin/activate
 	pip install --upgrade pip
-	pip install -r pip-requirements.txt
+	pip install -r pip-requirements.
 
-# Running script to gather RRD data
-	screen python3 script.py --ip 1.2.3.4
+# Example poller cronjob
+	*/5 * * * * root cd /home/script-user/fortigate_rrd && sudo -u script-user venv/bin/python3 poller.py --ip 172.31.255.255
 
 # Generate graph images
 	python3 create_graph.py
