@@ -93,6 +93,13 @@ while True:
             elif "local IPv4 addr" in line:
                 ''' Get AP mgmt IP '''
                 access_points[-1]['ip'] = line.split(": ")[1]
+
+            elif "connection state" in line:
+                ''' Ignore AP if not online '''
+                state = line.split(": ")[1]
+                if state != "Connected":
+                    del access_points[-1]
+                    break
             
             elif line == "Radio 1            : AP":
                 ''' Get current radio '''
@@ -149,4 +156,4 @@ while True:
     # print(f"Time taken: {end - start}")
 
     print("")
-    time.sleep(15 + end - start)
+    time.sleep(15 - end + start)
