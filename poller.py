@@ -127,11 +127,13 @@ while True:
     # print(json.dumps(access_points, indent=4))
 
     ''' Count how many clients are connected to each AP radio '''
-    for client in range(len(clients)):
-        for ap in range(len(access_points)):
-            if clients[client]['ap_ip'] == access_points[ap]['ip']:
-                radio = clients[client]['radio']
-                access_points[ap][radio]['clients'] += 1
+    for client in clients:
+        for ap in access_points:
+            if client['ap_ip'] == ap['ip']:
+                radio = client['radio']
+                ap[radio]['clients'] += 1
+    
+    # print(json.dumps(access_points, indent=4))
 
     ''' Write gathered data to RRD file '''
     for ap in access_points:
