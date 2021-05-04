@@ -20,7 +20,7 @@ options = argparser.parse_args()
 ''' Abort script if it is already running '''
 if platform == "linux":
     this_process = os.getpid()
-    sp = Popen(f"ps x | grep -v {this_process}", shell=True, stdout=PIPE, universal_newlines=True)
+    sp = Popen(f"ps x | grep -v {this_process} | grep -v screen | grep -v SCREEN", shell=True, stdout=PIPE, universal_newlines=True)
     output, error = sp.communicate()
     if options.ip in output:
         exit(f"Another script is already polling {options.ip}, aborting.")
@@ -65,10 +65,20 @@ while True:
         if "WTP: " in line:
             access_points.append({
                 "2ghz": {
-                    'tx-retries': -1
+                    'antenna-rssi': -1,
+                    'bytes-rx': -1,
+                    'bytes-tx': -1,
+                    'ch-util': -1,
+                    'interfering-ap': -1,
+                    'tx-retries': -1,
                 },
                 "5ghz": {
-                    'tx-retries': -1
+                    'antenna-rssi': -1,
+                    'bytes-rx': -1,
+                    'bytes-tx': -1,
+                    'ch-util': -1,
+                    'interfering-ap': -1,
+                    'tx-retries': -1,
                 }
             })
         
@@ -91,16 +101,26 @@ while True:
             access_points[-1][radio]['clients'] = line.split(": ")[1]
 
         elif "oper-chutil-val" in line:
+            ''' Old firmware APs report the value "N/A". If the value is not a valid int, ignore it. '''
             try:
                 access_points[-1][radio]['ch-util'] = int(line.split(": ")[1].split(" (")[0])
             except:
-                access_points[-1][radio]['ch-util'] = -1
+                pass
+
+        elif "bytes-rx" in line:
+            access_points[-1][radio]['bytes-rx'] = line.split(": ")[1]
+
+        elif "bytes-tx" in line:
+            access_points[-1][radio]['bytes-tx'] = line.split(": ")[1]
 
         elif "tx-retries" in line:
             access_points[-1][radio]['tx-retries'] = line.split(": ")[1].replace("%", "")
 
         elif "interfering-ap" in line:
             access_points[-1][radio]['interfering-ap'] = line.split(": ")[1]
+
+        elif "antenna RSSI" in line:
+            access_points[-1][radio]['antenna-rssi'] = line.split(": ")[1].split(" ")[0]
 
     # exit(json.dumps(access_points, indent=4))
 
@@ -115,18 +135,18 @@ while True:
             rrdtool.create(filename, 
                 "--start", "now",
                 "--step", "15",
-                "DS:ch-util-2ghz:GAUGE:60:0:100", "DS:clients-2ghz:GAUGE:60:0:200", "DS:tx-retries-2ghz:GAUGE:60:0:100", "DS:interfering-ap-2ghz:GAUGE:60:0:100",
-                "DS:ch-util-5ghz:GAUGE:60:0:100", "DS:clients-5ghz:GAUGE:60:0:200", "DS:tx-retries-5ghz:GAUGE:60:0:100", "DS:interfering-ap-5ghz:GAUGE:60:0:100",
+                "DS:ch-util-2ghz:GAUGE:60:0:100", "DS:clients-2ghz:GAUGE:60:0:200", "DS:tx-retries-2ghz:GAUGE:60:0:100", "DS:interfering-ap-2ghz:GAUGE:60:0:100", "DS:antenna-rssi-2ghz:GAUGE:60:0:100", "DS:bytes-rx-2ghz:COUNTER:60:0:U", "DS:bytes-tx-2ghz:COUNTER:60:0:U",
+                "DS:ch-util-5ghz:GAUGE:60:0:100", "DS:clients-5ghz:GAUGE:60:0:200", "DS:tx-retries-5ghz:GAUGE:60:0:100", "DS:interfering-ap-5ghz:GAUGE:60:0:100", "DS:antenna-rssi-5ghz:GAUGE:60:0:100", "DS:bytes-rx-5ghz:COUNTER:60:0:U", "DS:bytes-tx-5ghz:COUNTER:60:0:U",
                 "RRA:AVERAGE:0.25:1m:1M",
                 "RRA:AVERAGE:0.25:5m:1y")
         
-        update = f"N:{ap['2ghz']['ch-util']}:{ap['2ghz']['clients']}:{ap['2ghz']['tx-retries']}:{ap['2ghz']['interfering-ap']}"
-        update += f":{ap['5ghz']['ch-util']}:{ap['5ghz']['clients']}:{ap['5ghz']['tx-retries']}:{ap['5ghz']['interfering-ap']}"
+        update = f"N:{ap['2ghz']['ch-util']}:{ap['2ghz']['clients']}:{ap['2ghz']['tx-retries']}:{ap['2ghz']['interfering-ap']}:{ap['2ghz']['antenna-rssi']}:{ap['2ghz']['bytes-rx']}:{ap['2ghz']['bytes-tx']}"
+        update += f":{ap['5ghz']['ch-util']}:{ap['5ghz']['clients']}:{ap['5ghz']['tx-retries']}:{ap['5ghz']['interfering-ap']}:{ap['5ghz']['antenna-rssi']}:{ap['5ghz']['bytes-rx']}:{ap['5ghz']['bytes-tx']}"
         rrdtool.update(filename, update)
         print(update)
 
     end = time.time()
-    print(f"Time taken: {end - start}")
+    # print(f"Time taken: {end - start}")
 
     # print("")
     time.sleep(15 - end + start)
