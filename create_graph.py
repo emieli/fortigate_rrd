@@ -12,7 +12,7 @@ if not os.path.exists(graphs_folder):
 ''' Set graph history, change "minutes = 20" to however long history the graph should display '''
 end_time = datetime.datetime.now() - datetime.timedelta()
 end_time = int(time.mktime(end_time.timetuple()))
-start_time = datetime.datetime.now() - datetime.timedelta(minutes = 400)
+start_time = datetime.datetime.now() - datetime.timedelta(hours = 8)
 start_time = int(time.mktime(start_time.timetuple()))
 
 ''' Each step in the graph should be atleast 5 pixels or the graph becomes hard to interpret.
@@ -35,6 +35,7 @@ for data_file in data_files:
 
     ''' https://htmlcolors.com/color-chart '''
     for radio in ["2ghz", "5ghz"]:
+
         rrdtool.graph(f"{graphs_folder}/{image_file}-{radio}.png", 
             "--start", f"{start_time}",
             "--end", f"{end_time}",
@@ -45,9 +46,9 @@ for data_file in data_files:
             "--lower-limit=0",
             "COMMENT:                       Average           Max\l",
             f"DEF:clients-{radio}={input_file}:clients-{radio}:AVERAGE:step={step_size}", f"AREA:clients-{radio}#81c784:Clients", f"GPRINT:clients-{radio}:AVERAGE:%15.1lf%s", f"GPRINT:clients-{radio}:MAX:%14.1lf%s\l",
-            f"DEF:bytes-tx-{radio}={input_file}:bytes-tx-{radio}:AVERAGE:step={step_size}", f"CDEF:megabits-tx-{radio}=bytes-tx-{radio},8,*,1000000,/", f"AREA:megabits-tx-{radio}#4fc3f7:Rx", f"GPRINT:megabits-tx-{radio}:AVERAGE:%20.1lf%sMbps", f"GPRINT:megabits-tx-{radio}:MAX:%11.0lf%sMbps\l"
-            # f"DEF:bytes-tx-{radio}={input_file}:bytes-tx-{radio}:AVERAGE:step={step_size}",             f"CDEF:megabits-tx-{radio}=bytes-tx-{radio},8,*,1000000,/", f"STACK:megabits-tx-{radio}#ffd54f:Tx Mbps\l",
-            # f"DEF:ch-util-{radio}={input_file}:ch-util-{radio}:AVERAGE:step={step_size}",               f"LINE2:ch-util-{radio}#d32f2f:Channel Utilization\l",
-            # f"DEF:interfering-ap-{radio}={input_file}:interfering-ap-{radio}:AVERAGE:step={step_size}", f"LINE2:interfering-ap-{radio}#5d4037:Interfering APs\l",
-            # f"DEF:tx-retries-{radio}={input_file}:tx-retries-{radio}:AVERAGE:step={step_size}",         f"LINE2:tx-retries-{radio}#fbc02d:TX retries %\l",
+            f"DEF:bytes-tx-{radio}={input_file}:bytes-tx-{radio}:AVERAGE:step={step_size}", f"CDEF:megabits-tx-{radio}=bytes-tx-{radio},8,*,1000000,/", f"LINE:megabits-tx-{radio}#4fc3f7:Tx", f"GPRINT:megabits-tx-{radio}:AVERAGE:%21.1lf%s", f"GPRINT:megabits-tx-{radio}:MAX:%12.0lf%s\l",
+            f"DEF:bytes-rx-{radio}={input_file}:bytes-rx-{radio}:AVERAGE:step={step_size}", f"CDEF:megabits-rx-{radio}=bytes-rx-{radio},8,*,1000000,/", f"LINE:megabits-rx-{radio}#4FF7D9:rx", f"GPRINT:megabits-rx-{radio}:AVERAGE:%21.1lf%s", f"GPRINT:megabits-rx-{radio}:MAX:%12.0lf%s\l",
+            f"DEF:ch-util-{radio}={input_file}:ch-util-{radio}:AVERAGE:step={step_size}",               f"LINE2:ch-util-{radio}#d32f2f:Channel Utilization\l",
+            f"DEF:interfering-ap-{radio}={input_file}:interfering-ap-{radio}:AVERAGE:step={step_size}", f"LINE2:interfering-ap-{radio}#5d4037:Interfering APs\l",
+            f"DEF:tx-retries-{radio}={input_file}:tx-retries-{radio}:AVERAGE:step={step_size}",         f"LINE2:tx-retries-{radio}#fbc02d:TX retries %\l",
         )
