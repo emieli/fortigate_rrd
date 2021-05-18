@@ -3,6 +3,24 @@ import rrdtool
 import datetime
 import time
 
+import argparse
+argparser = argparse.ArgumentParser()
+argparser.add_argument(
+    "--apfilter",
+    dest="apfilter",
+    action="store",
+    required=True,
+    help="Filter by AP name. For example 'apfilter sehogruuap' will only create graphs for all APs containing that string",
+)
+argparser.add_argument(
+    "--history",
+    dest="history",
+    action="store",
+    required=True,
+    help="How far back the graphs should display, measured in hours",
+)
+options = argparser.parse_args()
+
 ''' Make sure the relevant folders exist '''
 data_folder = f"{os.path.dirname(os.path.realpath(__file__))}/rrd"
 data_files = os.listdir(data_folder)
@@ -13,7 +31,7 @@ if not os.path.exists(graphs_folder):
 ''' Set graph history, change "minutes = 20" to however long history the graph should display '''
 end_time = datetime.datetime.now() - datetime.timedelta()
 end_time = int(time.mktime(end_time.timetuple()))
-start_time = datetime.datetime.now() - datetime.timedelta(hours = 9)
+start_time = datetime.datetime.now() - datetime.timedelta(hours = int(options.history))
 start_time = int(time.mktime(start_time.timetuple()))
 
 ''' Each step in the graph should be atleast 5 pixels or the graph becomes hard to interpret.
@@ -29,8 +47,11 @@ while (graph_history / step_size) > maximum_steps:
 print(f"step: {step_size}")
 
 ''' Create interfering APs summary graph '''
+hex_colors = ["d50000", "aa00ff", "6200ea", "304ffe", "0091ea", "00b8d4", "00c853", "64dd17", "aeea00", "ffd600", "ff6d00", "dd2c00", "212121", "607d8b", "1b5e20"]
+
 def combined_graphs(fields):
     for field in fields:
+
         graph_data = [f"{graphs_folder}/{field}.png", 
             "--start", f"{start_time}",
             "--end", f"{end_time}",
@@ -43,16 +64,17 @@ def combined_graphs(fields):
             "TEXTALIGN:left",
         ]
 
-        hex_colors = ["d50000", "aa00ff", "6200ea", "304ffe", "0091ea", "00b8d4", "00c853", "64dd17", "aeea00", "ffd600", "ff6d00", "dd2c00", "212121", "607d8b", "1b5e20"]
-        color_index = -1
+        color_index = 0
         data_files.sort()
-        for i in range(len(data_files)):
-            color_index += 1
+        for ap in range(len(data_files)):
 
-            if i == len(hex_colors):
+            data_file = data_files[ap]
+            if not options.apfilter in data_file:
+                continue
+
+            if color_index == len(hex_colors):
                 color_index = 0
             
-            data_file = data_files[i]
             input_file = f"{data_folder}/{data_file}"
             ap_name = data_file.split(".")[0]
 
@@ -60,6 +82,7 @@ def combined_graphs(fields):
             graph_data.append(f"STACK:{ap_name}-{field}#{hex_colors[color_index]}:{ap_name}")
             graph_data.append(f"GPRINT:{ap_name}-{field}:AVERAGE:(avg %2.0lf\g")
             graph_data.append(f"GPRINT:{ap_name}-{field}:MAX:, max %2.0lf)")
+            color_index += 1
 
         rrdtool.graph(graph_data)
     return
@@ -67,10 +90,12 @@ def combined_graphs(fields):
 combined_graphs(["interfering-ap-2ghz", "interfering-ap-5ghz"])
 combined_graphs(["ch-util-2ghz", "ch-util-5ghz"])
 combined_graphs(["clients-2ghz", "clients-5ghz"])
-quit()
 
 ''' Create the graphs '''
 for data_file in data_files:
+    
+    if not options.apfilter in data_file:
+        continue
 
     input_file = f"{data_folder}/{data_file}"
     ap_name = data_file.replace(".rrd", "")

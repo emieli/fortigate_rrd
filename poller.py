@@ -52,8 +52,6 @@ else:
 ''' The loop that does all the work. Every 15 seconds it scrapes Wi-Fi data from Fortigate CLI and saves it to RRD files '''
 while True:
 
-    start = time.time()
-
     ''' Get AP data '''
     stdin, stdout, stderr = ssh.exec_command("get wireless-controller wtp-status")
     stdin.close()
@@ -138,15 +136,11 @@ while True:
                 "DS:ch-util-2ghz:GAUGE:60:0:100", "DS:clients-2ghz:GAUGE:60:0:200", "DS:tx-retries-2ghz:GAUGE:60:0:100", "DS:interfering-ap-2ghz:GAUGE:60:0:100", "DS:antenna-rssi-2ghz:GAUGE:60:0:100", "DS:bytes-rx-2ghz:COUNTER:60:0:U", "DS:bytes-tx-2ghz:COUNTER:60:0:U",
                 "DS:ch-util-5ghz:GAUGE:60:0:100", "DS:clients-5ghz:GAUGE:60:0:200", "DS:tx-retries-5ghz:GAUGE:60:0:100", "DS:interfering-ap-5ghz:GAUGE:60:0:100", "DS:antenna-rssi-5ghz:GAUGE:60:0:100", "DS:bytes-rx-5ghz:COUNTER:60:0:U", "DS:bytes-tx-5ghz:COUNTER:60:0:U",
                 "RRA:AVERAGE:0.25:1m:1M",
-                "RRA:AVERAGE:0.25:5m:1y")
+            )
         
         update = f"N:{ap['2ghz']['ch-util']}:{ap['2ghz']['clients']}:{ap['2ghz']['tx-retries']}:{ap['2ghz']['interfering-ap']}:{ap['2ghz']['antenna-rssi']}:{ap['2ghz']['bytes-rx']}:{ap['2ghz']['bytes-tx']}"
         update += f":{ap['5ghz']['ch-util']}:{ap['5ghz']['clients']}:{ap['5ghz']['tx-retries']}:{ap['5ghz']['interfering-ap']}:{ap['5ghz']['antenna-rssi']}:{ap['5ghz']['bytes-rx']}:{ap['5ghz']['bytes-tx']}"
         rrdtool.update(filename, update)
         print(update)
 
-    end = time.time()
-    # print(f"Time taken: {end - start}")
-
-    # print("")
-    time.sleep(15 - end + start)
+    time.sleep(15)
