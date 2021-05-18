@@ -10,16 +10,16 @@ argparser.add_argument(
     dest="apfilter",
     action="store",
     required=True,
-    help="Filter by AP name. For example 'apfilter sehogruuap' will only create graphs for all APs containing that string",
+    help="Filter by AP name. For example 'apfilter sehogruuap' will only create graphs for all APs containing that string. Example: --apfilter=sehelkap",
 )
 argparser.add_argument(
     "--history",
     dest="history",
     action="store",
     required=True,
-    help="How far back the graphs should display, measured in hours",
+    help="How far back the graphs should display, measured in hours. Example: --history=1",
 )
-options = argparser.parse_args()
+options = vars(argparser.parse_args())
 
 ''' Make sure the relevant folders exist '''
 data_folder = f"{os.path.dirname(os.path.realpath(__file__))}/rrd"
@@ -31,7 +31,7 @@ if not os.path.exists(graphs_folder):
 ''' Set graph history, change "minutes = 20" to however long history the graph should display '''
 end_time = datetime.datetime.now() - datetime.timedelta()
 end_time = int(time.mktime(end_time.timetuple()))
-start_time = datetime.datetime.now() - datetime.timedelta(hours = int(options.history))
+start_time = datetime.datetime.now() - datetime.timedelta(hours = int(options['history']))
 start_time = int(time.mktime(start_time.timetuple()))
 
 ''' Each step in the graph should be atleast 5 pixels or the graph becomes hard to interpret.
@@ -51,11 +51,10 @@ hex_colors = ["d50000", "aa00ff", "6200ea", "304ffe", "0091ea", "00b8d4", "00c85
 
 def combined_graphs(fields):
     for field in fields:
-
-        graph_data = [f"{graphs_folder}/{field}.png", 
+        graph_data = [f"{graphs_folder}/{options['apfilter']}-{field}.png",
             "--start", f"{start_time}",
             "--end", f"{end_time}",
-            f"--title={field} statistics",
+            f"--title={options['apfilter']} {field} statistics",
             "--height=300",
             f"--width={graph_width}",
             "--font=LEGEND:9:Consolas",
@@ -66,17 +65,29 @@ def combined_graphs(fields):
 
         color_index = 0
         data_files.sort()
-        for ap in range(len(data_files)):
+        for i in range(len(data_files)):
 
-            data_file = data_files[ap]
-            if not options.apfilter in data_file:
-                continue
-
-            if color_index == len(hex_colors):
-                color_index = 0
-            
+            ''' Retrieve AP name from data file '''
+            data_file = data_files[i]
             input_file = f"{data_folder}/{data_file}"
             ap_name = data_file.split(".")[0]
+            if not options['apfilter'] in data_file:
+                continue
+
+            ''' Create dummy-graph to get field average value. If the value is 0 then don't graph it. This helps create prettier and less dense graphs '''
+            output = rrdtool.graphv(f"-",
+                "--start", f"{start_time}",
+                "--end", f"{end_time}",
+                f"DEF:{field}={input_file}:{field}:AVERAGE:step={step_size}", f"GPRINT:{field}:AVERAGE:%1.0lf"
+            )
+            average = int(output['legend[0]'])
+            if average < 1:
+                print(f"Skipping {ap_name}-{field}, average value is {average}")
+                continue
+
+            ''' AP has relevant data, add it to combined graph '''
+            if color_index == len(hex_colors):
+                color_index = 0
 
             graph_data.append(f"DEF:{ap_name}-{field}={input_file}:{field}:AVERAGE:step={step_size}")
             graph_data.append(f"STACK:{ap_name}-{field}#{hex_colors[color_index]}:{ap_name}")
@@ -93,8 +104,8 @@ combined_graphs(["clients-2ghz", "clients-5ghz"])
 
 ''' Create the graphs '''
 for data_file in data_files:
-    
-    if not options.apfilter in data_file:
+
+    if not options['apfilter'] in data_file:
         continue
 
     input_file = f"{data_folder}/{data_file}"
@@ -103,7 +114,7 @@ for data_file in data_files:
     ''' https://htmlcolors.com/color-chart '''
     for radio in ["2ghz", "5ghz"]:
 
-        rrdtool.graph(f"{graphs_folder}/{ap_name}-{radio}.png", 
+        rrdtool.graph(f"{graphs_folder}/{ap_name}-{radio}.png",
             "--start", f"{start_time}",
             "--end", f"{end_time}",
             f"--title={ap_name} statistics",
@@ -122,5 +133,5 @@ for data_file in data_files:
             # f"DEF:tx-retries-{radio}={input_file}:tx-retries-{radio}:AVERAGE:step={step_size}", f"LINE2:tx-retries-{radio}#e68f05:TX retr %", f"GPRINT:tx-retries-{radio}:AVERAGE:%6.0lf", f"GPRINT:tx-retries-{radio}:MAX:%6.0lf\l",
             # f"DEF:antenna-rssi-{radio}={input_file}:antenna-rssi-{radio}:AVERAGE:step={step_size}", f"LINE2:antenna-rssi-{radio}#afb42b:AP RSSI  ", f"GPRINT:antenna-rssi-{radio}:AVERAGE:%6.0lf", f"GPRINT:antenna-rssi-{radio}:MAX:%6.0lf\l",
             "--rigid",
-            # "LINE:100#000",             
+            # "LINE:100#000",
         )
