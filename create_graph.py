@@ -82,7 +82,7 @@ def combined_graphs(fields):
             )
             average = int(output['legend[0]'])
             if average < 1:
-                print(f"Skipping {ap_name}-{field}, average value is {average}")
+                # print(f"Skipping {ap_name}-{field}, average value is {average}")
                 continue
 
             ''' AP has relevant data, add it to combined graph '''
@@ -117,7 +117,7 @@ for data_file in data_files:
         rrdtool.graph(f"{graphs_folder}/{ap_name}-{radio}.png",
             "--start", f"{start_time}",
             "--end", f"{end_time}",
-            f"--title={ap_name} statistics",
+            f"--title={ap_name} {radio} statistics",
             "--height=500",
             f"--width={graph_width}",
             "--upper-limit=100",
