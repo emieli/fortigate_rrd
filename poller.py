@@ -1,4 +1,5 @@
-import paramiko
+import subprocess
+import pexpect
 import time
 import rrdtool
 import os
@@ -39,25 +40,33 @@ data_folder = f"{os.path.dirname(os.path.realpath(__file__))}/rrd"
 if not os.path.exists(data_folder):
     os.makedirs(data_folder)
 
-''' Connect to Fortigate via SSH '''
+''' Connect to Fortigate via SSH
+    Ended up using Pexpect, tried Paramiko first but it seems it can only run a single command and then it closes the SSH session.
+    Since we run a command every 15 seconds the server would be setting up a new SSH session every 15 seconds, not optimal.
+    Pexpect is not as softisticated but gets the job done. '''
 try:
-    ssh = paramiko.SSHClient()
-    ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-    ssh.connect(options.ip, username=username, password=password)
-except Exception as e:
-    exit(f"SSH connection failed: {e}")
-else:
-    print("SSH session connected")
+    ssh = pexpect.spawn(f"ssh {username}@{options.ip}")
+    ssh.expect("password: ")
+    ssh.sendline(password)
+    ''' Fortigate prompt '''
+    prompt = " # "
+    ssh.expect(prompt)
+    ''' We snatch the device name to get the full prompt line, example: 'sehelkapfg01 # ' '''
+    prompt = ssh.before.decode("utf-8") + prompt
+    print(prompt)
+except pexpect.ExceptionPexpect as e:
+    print(e)
 
 ''' The loop that does all the work. Every 15 seconds it scrapes Wi-Fi data from Fortigate CLI and saves it to RRD files '''
 while True:
 
     ''' Get AP data '''
-    stdin, stdout, stderr = ssh.exec_command("get wireless-controller wtp-status")
-    stdin.close()
+    ssh.sendline("get wireless-controller wtp-status")
+    ssh.expect(prompt)
+    output = ssh.before.decode("utf-8")
 
     access_points = []
-    for line in stdout.readlines():
+    for line in output.split("\r\n"):
         line = line.strip()
 
         if "WTP: " in line:
@@ -142,5 +151,5 @@ while True:
         update += f":{ap['5ghz']['ch-util']}:{ap['5ghz']['clients']}:{ap['5ghz']['tx-retries']}:{ap['5ghz']['interfering-ap']}:{ap['5ghz']['antenna-rssi']}:{ap['5ghz']['bytes-rx']}:{ap['5ghz']['bytes-tx']}"
         rrdtool.update(filename, update)
         print(update)
-
+    print("")
     time.sleep(15)
