@@ -2,6 +2,7 @@ import os
 import rrdtool
 import datetime
 import time
+import re
 
 import argparse
 argparser = argparse.ArgumentParser()
@@ -13,11 +14,18 @@ argparser.add_argument(
     help="Filter by AP name. For example 'apfilter sehogruuap' will only create graphs for all APs containing that string. Example: --apfilter=sehelkap",
 )
 argparser.add_argument(
-    "--history",
-    dest="history",
+    "--start",
+    dest="start",
     action="store",
     required=True,
-    help="How far back the graphs should display, measured in hours. Example: --history=1",
+    help="When the graphs should start. YYYY-MM-DD-HH-MM Example: --history=2021-06-02-09-00",
+)
+argparser.add_argument(
+    "--end",
+    dest="end",
+    action="store",
+    required=True,
+    help="When the graphs should end. YYYY-MM-DD-HH-MM Example: --history=2021-06-02-10-00",
 )
 options = vars(argparser.parse_args())
 
@@ -29,10 +37,13 @@ if not os.path.exists(graphs_folder):
     os.makedirs(graphs_folder)
 
 ''' Set graph history, change "minutes = 20" to however long history the graph should display '''
-end_time = datetime.datetime.now() - datetime.timedelta()
-end_time = int(time.mktime(end_time.timetuple()))
-start_time = datetime.datetime.now() - datetime.timedelta(hours = int(options['history']))
+sy, sM, sd, sh, sm = options['start'].split("-")
+start_time = datetime.datetime(int(sy), int(sM), int(sd), int(sh), int(sm))
 start_time = int(time.mktime(start_time.timetuple()))
+
+ey, eM, ed, eh, em = options['end'].split("-")
+end_time = datetime.datetime(int(ey), int(eM), int(ed), int(eh), int(em))
+end_time = int(time.mktime(end_time.timetuple()))
 
 ''' Each step in the graph should be atleast 5 pixels or the graph becomes hard to interpret.
     Data is saved in 60 second increments, so that's the smallest possible step.
@@ -51,7 +62,7 @@ hex_colors = ["d50000", "aa00ff", "6200ea", "304ffe", "0091ea", "00b8d4", "00c85
 
 def combined_graphs(fields):
     for field in fields:
-        graph_data = [f"{graphs_folder}/{options['apfilter']}-{field}.png",
+        graph_data = [f"{graphs_folder}/{options['apfilter']}-{field}-{step_size}.png",
             "--start", f"{start_time}",
             "--end", f"{end_time}",
             f"--title={options['apfilter']} {field} statistics",
@@ -82,7 +93,6 @@ def combined_graphs(fields):
             )
             average = int(output['legend[0]'])
             if average < 1:
-                # print(f"Skipping {ap_name}-{field}, average value is {average}")
                 continue
 
             ''' AP has relevant data, add it to combined graph '''
@@ -114,7 +124,7 @@ for data_file in data_files:
     ''' https://htmlcolors.com/color-chart '''
     for radio in ["2ghz", "5ghz"]:
 
-        rrdtool.graph(f"{graphs_folder}/{ap_name}-{radio}.png",
+        rrdtool.graph(f"{graphs_folder}/{ap_name}-{radio}-{step_size}.png",
             "--start", f"{start_time}",
             "--end", f"{end_time}",
             f"--title={ap_name} {radio} statistics",
