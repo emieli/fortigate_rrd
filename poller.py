@@ -43,18 +43,21 @@ if not os.path.exists(data_folder):
 ''' Connect to Fortigate via SSH
     Ended up using Pexpect, tried Paramiko first but it seems it can only run a single command and then it closes the SSH session.
     Since we run a command every 15 seconds the server would be setting up a new SSH session every 15 seconds, not optimal.
-    Pexpect is not as softisticated but gets the job done. '''
+    Pexpect is not as sophisticated but gets the job done. '''
 try:
-    ssh = pexpect.spawn(f"ssh {username}@{options.ip}")
-    ssh.expect("password: ")
+    ssh = pexpect.spawn(f"ssh -o 'UserKnownHostsFile=/dev/null' -o 'StrictHostKeyChecking=no' {username}@{options.ip}")
+    i = ssh.expect("password: ")
     ssh.sendline(password)
     ''' Fortigate prompt '''
     prompt = " # "
     ssh.expect(prompt)
+    
     ''' We snatch the device name to get the full prompt line, example: 'sehelkapfg01 # ' '''
-    prompt = ssh.before.decode("utf-8") + prompt
-    print(prompt)
+    output = ssh.before.decode("utf-8")
+    hostname = output.split("\r\n")[-1]
+    prompt = hostname + prompt
 except pexpect.ExceptionPexpect as e:
+    print(prompt)
     print(e)
 
 ''' The loop that does all the work. Every 15 seconds it scrapes Wi-Fi data from Fortigate CLI and saves it to RRD files '''

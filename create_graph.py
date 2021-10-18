@@ -11,21 +11,21 @@ argparser.add_argument(
     dest="apfilter",
     action="store",
     required=True,
-    help="Filter by AP name. For example 'apfilter sehogruuap' will only create graphs for all APs containing that string. Example: --apfilter=sehelkap",
+    help="Filter by AP name. For example 'apfilter sehogruuap' will only create graphs for all APs containing that string. Example: --apfilter sehelkap",
 )
 argparser.add_argument(
     "--start",
     dest="start",
     action="store",
     required=True,
-    help="When the graphs should start. YYYY-MM-DD-HH-MM Example: --history=2021-06-02-09-00",
+    help="When the graphs should start. YYYY-MM-DD-HH-MM Example: --start 2021-06-02-09-00",
 )
 argparser.add_argument(
     "--end",
     dest="end",
     action="store",
     required=True,
-    help="When the graphs should end. YYYY-MM-DD-HH-MM Example: --history=2021-06-02-10-00",
+    help="When the graphs should end. YYYY-MM-DD-HH-MM Example: --end 2021-06-02-10-00",
 )
 options = vars(argparser.parse_args())
 
@@ -50,7 +50,7 @@ end_time = int(time.mktime(end_time.timetuple()))
     A 1200 pixels wide graph can contain 240 steps maximum (1200/5=240), so the graph history can't be more than 240 minutes if it's going to look good
     A longer graph history requires a larger step size, for example a 5 hour history requires a 120 second step size. '''
 graph_history = end_time - start_time
-graph_width = 1900
+graph_width = 1500
 maximum_steps = graph_width / 2
 step_size = minimum_step = 60
 while (graph_history / step_size) > maximum_steps:
