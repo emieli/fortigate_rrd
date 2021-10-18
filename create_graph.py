@@ -62,7 +62,7 @@ hex_colors = ["d50000", "aa00ff", "6200ea", "304ffe", "0091ea", "00b8d4", "00c85
 
 def combined_graphs(fields):
     for field in fields:
-        graph_data = [f"{graphs_folder}/{options['apfilter']}-{field}-{step_size}.png",
+        graph_data = [f"{graphs_folder}/{options['apfilter']}-{field}.png",
             "--start", f"{start_time}",
             "--end", f"{end_time}",
             f"--title={options['apfilter']} {field} statistics",
@@ -91,7 +91,12 @@ def combined_graphs(fields):
                 "--end", f"{end_time}",
                 f"DEF:{field}={input_file}:{field}:AVERAGE:step={step_size}", f"GPRINT:{field}:AVERAGE:%1.0lf"
             )
-            average = int(output['legend[0]'])
+
+            try:
+                average = int(output['legend[0]'])
+            except ValueError:
+                print(f"Processing failed on {input_file}, {field}, value: {output['legend[0]']}")
+                continue
             if average < 1:
                 continue
 
@@ -102,7 +107,7 @@ def combined_graphs(fields):
             graph_data.append(f"DEF:{ap_name}-{field}={input_file}:{field}:AVERAGE:step={step_size}")
             graph_data.append(f"STACK:{ap_name}-{field}#{hex_colors[color_index]}:{ap_name}")
             graph_data.append(f"GPRINT:{ap_name}-{field}:AVERAGE:(avg %2.0lf\g")
-            graph_data.append(f"GPRINT:{ap_name}-{field}:MAX:, max %2.0lf)")
+            graph_data.append(f"GPRINT:{ap_name}-{field}:MAX:, max %2.0lf)\l")
             color_index += 1
 
         rrdtool.graph(graph_data)
@@ -124,7 +129,7 @@ for data_file in data_files:
     ''' https://htmlcolors.com/color-chart '''
     for radio in ["2ghz", "5ghz"]:
 
-        rrdtool.graph(f"{graphs_folder}/{ap_name}-{radio}-{step_size}.png",
+        rrdtool.graph(f"{graphs_folder}/{ap_name}-{radio}.png",
             "--start", f"{start_time}",
             "--end", f"{end_time}",
             f"--title={ap_name} {radio} statistics",
