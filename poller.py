@@ -30,7 +30,7 @@ if platform == "linux":
 try:
     from credentials import username
     from credentials import password
-except:
+except ImportError:
     import getpass
     username = getpass.getuser()
     password = getpass.getpass(f"Enter Fortigate password ({username}): ")
@@ -56,6 +56,7 @@ try:
     output = ssh.before.decode("utf-8")
     hostname = output.split("\r\n")[-1]
     prompt = hostname + prompt
+
 except pexpect.ExceptionPexpect as e:
     print(prompt)
     print(e)
@@ -114,7 +115,7 @@ while True:
             ''' Old firmware APs report the value "N/A". If the value is not a valid int, ignore it. '''
             try:
                 access_points[-1][radio]['ch-util'] = int(line.split(": ")[1].split(" (")[0])
-            except:
+            except IndexError:
                 pass
 
         elif "bytes-rx" in line:

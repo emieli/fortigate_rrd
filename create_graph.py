@@ -50,7 +50,7 @@ end_time = int(time.mktime(end_time.timetuple()))
     A 1200 pixels wide graph can contain 240 steps maximum (1200/5=240), so the graph history can't be more than 240 minutes if it's going to look good
     A longer graph history requires a larger step size, for example a 5 hour history requires a 120 second step size. '''
 graph_history = end_time - start_time
-graph_width = 1500
+graph_width = 1900
 maximum_steps = graph_width / 2
 step_size = minimum_step = 60
 while (graph_history / step_size) > maximum_steps:
