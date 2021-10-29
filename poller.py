@@ -117,6 +117,8 @@ while True:
                 access_points[-1][radio]['ch-util'] = int(line.split(": ")[1].split(" (")[0])
             except IndexError:
                 pass
+            except ValueError:
+                pass
 
         elif "bytes-rx" in line:
             access_points[-1][radio]['bytes-rx'] = line.split(": ")[1]
