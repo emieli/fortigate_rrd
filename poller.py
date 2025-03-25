@@ -32,7 +32,7 @@ try:
     from credentials import password
 except ImportError:
     import getpass
-    username = getpass.getuser()
+    username = input("Enter Fortigate username: ")
     password = getpass.getpass(f"Enter Fortigate password ({username}): ")
 
 ''' Create folders if missing '''
@@ -133,7 +133,7 @@ while True:
             access_points[-1][radio]['interfering-ap'] = line.split(": ")[1]
 
         elif "antenna RSSI" in line:
-            access_points[-1][radio]['antenna-rssi'] = line.split(": ")[1].split(" ")[0]
+            access_points[-1][radio]['antenna-rssi'] = line.split()[-2]
 
     # exit(json.dumps(access_points, indent=4))
 
