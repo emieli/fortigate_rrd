@@ -8,7 +8,7 @@ Creates RRD graphs for Fortinet Integrated Wi-Fi
 	python3 -m venv venv
 	source venv/bin/activate
 	pip install --upgrade pip
-	pip install -r pip-requirements.
+	pip install -r pip-requirements.txt
 
 # Example poller cronjob
 	*/5 * * * * root cd /home/script-user/fortigate_rrd && sudo -u script-user venv/bin/python3 poller.py --ip 172.31.255.255
